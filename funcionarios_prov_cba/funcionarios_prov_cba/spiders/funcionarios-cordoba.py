@@ -28,10 +28,10 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
                 yield scrapy.Request(next_page, callback=self.parse_ministerio, meta={'web_url': rep_url})
 
     def parse_ministerio(self, response):
-        
+
         cargo = response.css('h4.cargo::text').extract_first()
         ministro = response.css('h3.autoridad::text').extract_first()
-        
+
         self.logger.info(' *** INICIANDO MINISTERIO {}**** '.format(cargo))
 
         # div class fotoaut -> img src foto del funcionario
@@ -49,7 +49,7 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
 
         # yield funcionario
         yield FuncionariosProvCbaItem(**funcionario)
-        
+
 
         # ver la organica del ministerio
         organica = response.xpath("//a[contains(@title, 'Enlace permanente a Estructura')]/@href").extract_first()
@@ -72,16 +72,16 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
 
         autoridades = response.css('#secciones div.autoridad')
         for autoridad in autoridades:
-            
+
             a2 = autoridad.xpath('.//div')
-            
+
             '''
             <div class="autoridad">
                 <div style="margin-left:16%;background:#fff;overflow:hidden;padding:8px 8px;">
                     <label onclick="jQuery('.desp_1710').fadeToggle();" class="clic">
                     <h4>
                         <img src="http://www.cba.gov.ar/wp-content/themes/evolucion/img/btn_ul_5.gif" width="14" height="11">
-                        Presidente del Consejo de Seguridad Deportiva Provincial	
+                        Presidente del Consejo de Seguridad Deportiva Provincial
                     </h4>
                     </label>
                     <div style="display: none;" class="desplega desp_1710">
@@ -91,8 +91,8 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
                     <div class="acceder_largue">
                         <a href="http://www.cba.gov.ar/reparticion/ministerio-de-gobierno/secretaria-de-seguridad/presidente-del-consejo-de-seguridad-deportiva-provincial/">Acceder a Presidente del Consejo de Seguridad Deportiva Provincial</a>
                     </div>
-                    </div> 
-                </div>		 
+                    </div>
+                </div>
             </div>
             '''
 
@@ -101,7 +101,7 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
             a3b = a2.xpath('.//label')
             cargo_generico = a3b.xpath('.//h4/text()').extract()[1]
 
-            # un div con el nombre especifico, por ejemplo "Directora" en las mujeres 
+            # un div con el nombre especifico, por ejemplo "Directora" en las mujeres
             a3 = a2.xpath('.//div')
 
             func = a3.xpath('.//h3/text()').extract_first()
@@ -109,7 +109,7 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
 
             # div class fotoaut -> img src foto del funcionario
             foto = a3.xpath('.//div[@class="fotoaut"]/img/@src').extract_first()
-            
+
             # aparece a veces un link (quizas sea nuevo)
             # div class acceder_largue -> a href link fijo a este funcionario solo
             web_url = a3.xpath('.//div[@class="acceder_largue"]/a/@href').extract_first()
@@ -124,7 +124,7 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
                 # raise ValueError(err)
                 self.logger.info(err)
                 func = ''  # no hay funcionario designado
-            
+
             func = func.replace('\t', '').replace('\r', '').replace('\n', '')
             cargo_generico = cargo_generico.replace('\t', '').replace('\r', '').replace('\n', '')
             cargo_ocupado = cargo_ocupado.replace('\t', '').replace('\r', '').replace('\n', '')
