@@ -17,9 +17,9 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
     def parse(self, response):
         self.logger.info(' *** BUSCANDO MINISTERIOS **** ')
 
-        for reparticion in response.css('#menu-item-68614 ul li'):
-            rep_nombre = reparticion.css('a::text').extract_first()
-            rep_url = reparticion.css('a::attr(href)').extract_first()
+        for reparticion in response.xpath('//ul[@class="sub-menu"]/li'):
+            rep_nombre = reparticion.xpath('a/text()').get()
+            rep_url = reparticion.xpath('.//@href').get()
             # esta caida y no tiene la estructura que buscamos
             if rep_url in self.bad_urls:
                 self.logger.info('Ignorando ministerio {}'.format(rep_url))
@@ -29,34 +29,18 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
 
     def parse_ministerio(self, response):
 
-        cargo = response.css('h4.cargo::text').extract_first()
-        ministro = response.css('h3.autoridad::text').extract_first()
+        ministerio = response.xpath('//header/h1/text()').get()
 
-        self.logger.info(' *** INICIANDO MINISTERIO {}**** '.format(cargo))
+        self.logger.info(' *** INICIANDO {}**** '.format(ministerio))
 
         # div class fotoaut -> img src foto del funcionario
         foto = response.xpath('//div[@class="fotoaut"]/img/@src').extract_first()
 
-        cargo = cargo.replace('\t', '').replace('\r', '').replace('\n', '')
-
-        funcionario = {'funcionario': ministro,
-                        'cargo_generico': cargo,
-                        'cargo_ocupado': cargo,
-                        'ministerio': cargo,
-                        'web_url': response.meta['web_url'],
-                        'foto_url': [] if foto is None else [foto]
-                        }
-
-        # yield funcionario
-        yield FuncionariosProvCbaItem(**funcionario)
-
-
         # ver la organica del ministerio
-        organica = response.xpath("//a[contains(@title, 'Enlace permanente a Estructura')]/@href").extract_first()
+        organica = response.xpath('//section[@class="barra-lateral"]/a[text()="Estructura Orgánica"]/@href').get()
+
         if organica is None:
-            err = '********\nNo hay organica en {}\n********'.format(funcionario)
-            # raise ValueError(err)
-            self.logger.info(err)
+            self.logger.info('********\nNo hay organica en {}\n********'.format(ministerio))
         else:
             self.logger.info('Organica en {}'.format(organica))
 
@@ -65,37 +49,20 @@ class FuncionariosCordobaProvinciaSpider(scrapy.Spider):
                 self.logger.info('Ignorando dentro de ministerio {}'.format(rep_url))
             else:
                 next_page = response.urljoin(organica)
-                yield scrapy.Request(next_page, callback=self.parse_estructura_ministerio, meta={'ministerio': cargo, 'web_url': response.meta['web_url']})
+                yield scrapy.Request(
+                    next_page,
+                    callback=self.parse_estructura_ministerio,
+                    meta={'ministerio': ministerio, 'web_url': response.meta['web_url']}
+                )
 
     def parse_estructura_ministerio(self, response):
         self.logger.info(' *** EN ESTRUCTURA MINISTERIO {} **** '.format(response.meta['ministerio']))
 
-        autoridades = response.css('#secciones div.autoridad')
+        autoridades = response.xpath('//section[@class="esencial"]')
+
         for autoridad in autoridades:
 
             a2 = autoridad.xpath('.//div')
-
-            '''
-            <div class="autoridad">
-                <div style="margin-left:16%;background:#fff;overflow:hidden;padding:8px 8px;">
-                    <label onclick="jQuery('.desp_1710').fadeToggle();" class="clic">
-                    <h4>
-                        <img src="http://www.cba.gov.ar/wp-content/themes/evolucion/img/btn_ul_5.gif" width="14" height="11">
-                        Presidente del Consejo de Seguridad Deportiva Provincial
-                    </h4>
-                    </label>
-                    <div style="display: none;" class="desplega desp_1710">
-                        <div class="fotoaut"><img width="200" height="150" src="http://www.cba.gov.ar/wp-content/4p96humuzp/2012/06/rody-guerreiro.jpg" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" alt=""></div>				<h3>Rody Wilson Guerreiro</h3>
-                        <h5 class="bullet">
-        Presidente del Consejo de Seguridad Deportiva Provincial				</h5>
-                    <div class="acceder_largue">
-                        <a href="http://www.cba.gov.ar/reparticion/ministerio-de-gobierno/secretaria-de-seguridad/presidente-del-consejo-de-seguridad-deportiva-provincial/">Acceder a Presidente del Consejo de Seguridad Deportiva Provincial</a>
-                    </div>
-                    </div>
-                </div>
-            </div>
-            '''
-
 
             # hay un label + h4 donde se ve el nombre del cargo y ...
             a3b = a2.xpath('.//label')
